@@ -1,0 +1,13 @@
+{
+    "name": "yangkai/server-timer",
+    "description": "golang 的一个服务器代理任务",
+    "keywords": ["yangkai", "server", "tcp" , "timer"],
+    "minimum-stability":"dev",
+    "require": {
+	    "php":"^7.0.12"
+    },
+    "autoload": {
+        "psr-4": {"yangkai\\server\\timer\\": ""}
+    }
+}
+
