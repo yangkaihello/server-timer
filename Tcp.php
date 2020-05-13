@@ -11,6 +11,10 @@ namespace yangkai\server\timer;
 use yangkai\server\timer\exceptions\SocketException;
 use yangkai\server\timer\interfaces\TimerChannelInterface;
 
+/**
+ * Class Tcp
+ * @package yangkai\server\timer
+ */
 class Tcp extends Base implements TimerChannelInterface
 {
 
@@ -78,7 +82,7 @@ class Tcp extends Base implements TimerChannelInterface
             throw new SocketException(SocketException::MESSAGE_TASK_SERVER_CONFIG,SocketException::CODE_TASK_SERVER_CONFIG);
         }
 
-        $string = "status:".$this::STATUS_TASK_NUMBER."\n";
+        $string = self::TCP_STRING_STATUS. chr(self::SPLIT_SEARCH) .$this::STATUS_TASK_NUMBER."\n";
         [$taskNumberKey,$taskNumberValue] = explode(":",trim($this->Channel($string)));
 
         return $taskNumberValue;
@@ -94,19 +98,12 @@ class Tcp extends Base implements TimerChannelInterface
         if ( empty($this->token) || empty($this->ip) ) {
             throw new SocketException(SocketException::MESSAGE_TASK_SERVER_CONFIG,SocketException::CODE_TASK_SERVER_CONFIG);
         }
-
-        $string = "status:".$this::STATUS_TASK_DATE_NUMBER."\n";
-        [$taskNumberKey,$taskNumberValue] = explode(":",trim($this->Channel($string)));
+        //获取数据
+        $string = self::TCP_STRING_STATUS . chr(self::SPLIT_SEARCH) .$this::STATUS_TASK_DATE_NUMBER."\n";
+        [$taskNumberKey,$taskNumberValue] = explode(chr(self::SPLIT_SEARCH),trim($this->Channel($string)));
 
         //格式化task.date.number 数据
-        $taskNumberValue = array_filter(explode(",",$taskNumberValue));
-        $taskNumberValueDate = [];
-        foreach ($taskNumberValue as $key=>$value){
-            [$date,$length] = explode("=",$value);
-            $taskNumberValueDate[$date] = $length;
-        }
-
-        return $taskNumberValueDate;
+        return $this->StatusTaskDateNumberAnalysis($taskNumberValue);
     }
 
     /**
@@ -116,6 +113,10 @@ class Tcp extends Base implements TimerChannelInterface
      */
     public function GetTaskDateNumberOne(\DateTime $date) : int
     {
+        if ( empty($this->token) || empty($this->ip) ) {
+            throw new SocketException(SocketException::MESSAGE_TASK_SERVER_CONFIG,SocketException::CODE_TASK_SERVER_CONFIG);
+        }
+
         $taskNumberValueDates = $this->GetTaskDateNumberAll();
         return $taskNumberValueDates[$date->format("YmdHis")] ?? 0;
     }
@@ -131,14 +132,78 @@ class Tcp extends Base implements TimerChannelInterface
             throw new SocketException(SocketException::MESSAGE_TASK_SERVER_CONFIG,SocketException::CODE_TASK_SERVER_CONFIG);
         }
 
-        $string = "status\n";
+        $string = self::TCP_STRING_STATUS."\n";
         $logs = explode("\n",trim($this->Channel($string)));
         $global = [];
         foreach ($logs as $log){
-            $log = explode(":",$log);
+            $log = explode(chr(self::SPLIT_SEARCH),$log);
             $global[$log[0]] = trim(trim($log[1],"\n"));
+
+            //task.date.number 数据解析成数组进行返回
+            if ($log[0] == self::STATUS_TASK_DATE_NUMBER){
+                $global[$log[0]] = $this->StatusTaskDateNumberAnalysis($global[$log[0]]);
+            }
+
         }
         return $global;
     }
+
+    /**
+     * 获取所有的任务记录id
+     * @return array
+     */
+    public function GetRecordAll(): array
+    {
+        //获取数据
+        $string = self::TCP_STRING_RECORD . chr(self::SPLIT_SEARCH) ."all\n";
+        $recordValues = explode(chr(self::SPLIT_VALUE),trim($this->Channel($string)));
+
+        //格式化record 任务ids数据
+        $recordAllValues = [];
+        foreach ($recordValues as $value){
+            $recordAllValues += $this->RecordIdsAnalysis($value);
+        }
+        return $recordAllValues;
+    }
+
+    /**
+     * 获取某个时间段的任务记录id
+     * @return array
+     */
+    public function GetRecordDate(\DateTime $date): array
+    {
+        //获取数据
+        $string = self::TCP_STRING_RECORD . chr(self::SPLIT_SEARCH) . $date->format("YmdHis") . "\n";
+        $recordValues = trim($this->Channel($string));
+        return $this->RecordIdsAnalysis($recordValues);
+    }
+
+    /**
+     * 删除某个时间段的所有任务
+     * @param \DateTime $date
+     * @return int
+     */
+    public function DeleteDate(\DateTime $date): int
+    {
+        //获取数据
+        $string = self::TCP_STRING_DELETE . chr(self::SPLIT_SEARCH) . $date->format("YmdHis") . "\n";
+        $deleteNumber = trim($this->Channel($string));
+        return $deleteNumber;
+    }
+
+    /**
+     * 删除某个时间段中的固定任务
+     * @param \DateTime $date
+     * @return int
+     */
+    public function DeleteId(\DateTime $date, int $id): int
+    {
+        //获取数据
+        $string = self::TCP_STRING_DELETE . chr(self::SPLIT_SEARCH) . $date->format("YmdHis") . chr(self::SPLIT_KEYS) . $id . "\n";
+        $deleteNumber = trim($this->Channel($string));
+        return $deleteNumber;
+    }
+
+
 
 }

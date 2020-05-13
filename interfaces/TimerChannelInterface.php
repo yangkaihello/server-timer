@@ -66,4 +66,30 @@ interface TimerChannelInterface
      */
     public function GetStatus() : array;
 
+    /**
+     * 获取所有的任务记录id
+     * @return array
+     */
+    public function GetRecordAll() : array;
+
+    /**
+     * 获取某个时间段的任务记录id
+     * @return array
+     */
+    public function GetRecordDate(\DateTime $date) : array;
+
+    /**
+     * 删除某个时间段的所有任务
+     * @param \DateTime $date
+     * @return int
+     */
+    public function DeleteDate(\DateTime $date) : int;
+
+    /**
+     * 删除某个时间段中的固定任务
+     * @param \DateTime $date
+     * @return int
+     */
+    public function DeleteId(\DateTime $date,int $id) : int;
+
 }
